@@ -456,8 +456,7 @@ static int concat_files(streamer_assembly_state *assembly_state, char **file_lis
 
     for (int file_position = 0; file_position < file_count; file_position++)
     {
-        fprintf(list_file_handle, "file '%s/%s'\n",
-                assembly_state->work_directory, file_list[file_position]);
+        fprintf(list_file_handle, "file '%s'\n", file_list[file_position]);
     }
 
     fclose(list_file_handle);
