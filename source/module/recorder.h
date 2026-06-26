@@ -38,11 +38,11 @@ typedef struct recorder_context
 
 recorder_context* recorder_create(const char *streamer, const char *platform,
                                   const char *base_dir, const void *config);
-int recorder_start(recorder_context *ctx);
-void recorder_stop(recorder_context *ctx, int finalize);
-void recorder_destroy(recorder_context *ctx);
-void recorder_update_configuration(recorder_context *ctx, const void *new_config);
-recorder_state recorder_get_state(recorder_context *ctx);
-void recorder_get_status_string(recorder_context *ctx, char *buffer, size_t buffer_size);
+int recorder_start(recorder_context *context);
+void recorder_stop(recorder_context *context, int finalize);
+void recorder_destroy(recorder_context *context);
+void recorder_update_configuration(recorder_context *context, const void *new_config);
+recorder_state recorder_get_state(recorder_context *context);
+void recorder_get_status_string(recorder_context *context, char *buffer, size_t buffer_size);
 
 #endif

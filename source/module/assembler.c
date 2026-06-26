@@ -243,25 +243,20 @@ static void process_streamer(assembler_context *context, streamer_assembly_state
     {
         return;
     }
-
     scan_directory(assembly_state);
-
     if (assembly_state->pending_count == 0)
     {
         return;
     }
-
     int processing_total = assembly_state->pending_count;
     if (!finalize && assembly_state->pending_count > 1)
     {
         processing_total = assembly_state->pending_count - 1;
     }
-
     if (processing_total == 0)
     {
         return;
     }
-
     int maximum_size_megabytes = context->current_config.concat_max_size_mb;
     size_t maximum_bytes = (size_t)maximum_size_megabytes * 1024 * 1024;
     size_t accumulated_size = 0;
@@ -274,58 +269,55 @@ static void process_streamer(assembler_context *context, streamer_assembly_state
         struct stat file_status;
         char complete_path[512];
         snprintf(complete_path, sizeof(complete_path), "%s/%s",
-                 assembly_state->work_directory, processing_list[file_position]);
-
+        assembly_state->work_directory, processing_list[file_position]);
         if (stat(complete_path, &file_status) != 0)
         {
             continue;
         }
-
-        accumulated_size += file_status.st_size;
-
-        if (accumulated_size >= maximum_bytes && (file_position - start_position + 1) > 1)
+        
+        size_t current_file_size = file_status.st_size;
+        if (accumulated_size + current_file_size > maximum_bytes && (file_position - start_position) > 0)
         {
+            int end_position = file_position - 1;
+            int count_to_concat = end_position - start_position + 1;
+            
             char output_path[1024];
             char *initial_file = processing_list[start_position];
             char base_name[256];
             strncpy(base_name, initial_file, sizeof(base_name) - 1);
             base_name[sizeof(base_name) - 1] = '\0';
-
             char *extension_position = strrchr(base_name, '.');
             if (extension_position)
             {
                 *extension_position = '\0';
             }
-
             snprintf(output_path, sizeof(output_path), "%s/%s.mp4",
-                     assembly_state->work_directory, base_name);
-
+            assembly_state->work_directory, base_name);
+            
             if (concat_files(assembly_state, &processing_list[start_position],
-                            file_position - start_position + 1, output_path) == 0)
+            count_to_concat, output_path) == 0)
             {
                 if (!context->current_config.concat_keep_ts)
                 {
-                    for (int removal_position = start_position; removal_position <= file_position; removal_position++)
+                    for (int removal_position = start_position; removal_position <= end_position; removal_position++)
                     {
                         char file_path[512];
                         snprintf(file_path, sizeof(file_path), "%s/%s",
-                                 assembly_state->work_directory, processing_list[removal_position]);
+                        assembly_state->work_directory, processing_list[removal_position]);
                         unlink(file_path);
                     }
                 }
-
-                for (int removal_position = start_position; removal_position <= file_position; removal_position++)
+                for (int removal_position = start_position; removal_position <= end_position; removal_position++)
                 {
                     free(assembly_state->pending_files[removal_position]);
                     assembly_state->pending_files[removal_position] = NULL;
                 }
-
-                int removal_total = file_position - start_position + 1;
-                for (int shift_position = file_position + 1; shift_position < assembly_state->pending_count; shift_position++)
+                
+                int removal_total = count_to_concat;
+                for (int shift_position = end_position + 1; shift_position < assembly_state->pending_count; shift_position++)
                 {
                     assembly_state->pending_files[shift_position - removal_total] = assembly_state->pending_files[shift_position];
                 }
-
                 assembly_state->pending_count -= removal_total;
                 total_to_process -= removal_total;
                 file_position = start_position - 1;
@@ -340,6 +332,10 @@ static void process_streamer(assembler_context *context, streamer_assembly_state
                 continue;
             }
         }
+        else
+        {
+            accumulated_size += current_file_size;
+        }
     }
 
     if (finalize && assembly_state->pending_count > 0)
@@ -349,18 +345,15 @@ static void process_streamer(assembler_context *context, streamer_assembly_state
         char base_name[256];
         strncpy(base_name, initial_file, sizeof(base_name) - 1);
         base_name[sizeof(base_name) - 1] = '\0';
-
         char *extension_position = strrchr(base_name, '.');
         if (extension_position)
         {
             *extension_position = '\0';
         }
-
         snprintf(output_path, sizeof(output_path), "%s/%s.mp4",
-                 assembly_state->work_directory, base_name);
-
+        assembly_state->work_directory, base_name);
         if (concat_files(assembly_state, assembly_state->pending_files,
-                        assembly_state->pending_count, output_path) == 0)
+        assembly_state->pending_count, output_path) == 0)
         {
             if (!context->current_config.concat_keep_ts)
             {
@@ -368,17 +361,15 @@ static void process_streamer(assembler_context *context, streamer_assembly_state
                 {
                     char file_path[512];
                     snprintf(file_path, sizeof(file_path), "%s/%s",
-                             assembly_state->work_directory, assembly_state->pending_files[removal_position]);
+                    assembly_state->work_directory, assembly_state->pending_files[removal_position]);
                     unlink(file_path);
                 }
             }
-
             for (int removal_position = 0; removal_position < assembly_state->pending_count; removal_position++)
             {
                 free(assembly_state->pending_files[removal_position]);
                 assembly_state->pending_files[removal_position] = NULL;
             }
-
             assembly_state->pending_count = 0;
         }
     }
@@ -463,8 +454,8 @@ static int concat_files(streamer_assembly_state *assembly_state, char **file_lis
 
     char shell_command[2048];
     snprintf(shell_command, sizeof(shell_command),
-             "ffmpeg -f concat -safe 0 -i %s -c copy -movflags +faststart \"%s\" -y </dev/null",
-             list_file_path, output_path);
+             "ffmpeg -nostats -loglevel warning -f concat -safe 0 -i %s -c copy -movflags +faststart \"%s\" -y </dev/null 2>>%s/ffmpeg_assembler.log",
+             list_file_path, output_path, assembly_state->work_directory);
 
     int result = system(shell_command);
     if (result != 0)

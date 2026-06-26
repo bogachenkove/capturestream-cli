@@ -396,26 +396,25 @@ static const char* build_quality_chain(const char *requested_quality)
     {
         return "best";
     }
-
     if (strcmp(requested_quality, "1080p") == 0)
     {
-        return "1080p,1080p60,720p,720p60,480p,360p,160p";
+        return "1080p,1080p60,best,720p,720p60,480p,360p,160p";
     }
     else if (strcmp(requested_quality, "720p") == 0)
     {
-        return "720p,720p60,480p,360p,160p";
+        return "720p,720p60,1080p,1080p60,best,480p,360p,160p";
     }
     else if (strcmp(requested_quality, "480p") == 0)
     {
-        return "480p,480p60,360p,360p60,160p";
+        return "480p,480p60,720p,720p60,1080p,1080p60,best,360p,360p60,160p";
     }
     else if (strcmp(requested_quality, "360p") == 0)
     {
-        return "360p,360p60,160p";
+        return "360p,360p60,480p,480p60,720p,720p60,1080p,1080p60,best,160p";
     }
     else if (strcmp(requested_quality, "160p") == 0)
     {
-        return "160p,worst";
+        return "160p,360p,360p60,480p,480p60,720p,720p60,1080p,1080p60,best,worst";
     }
     else if (strcmp(requested_quality, "best") == 0)
     {
@@ -425,7 +424,6 @@ static const char* build_quality_chain(const char *requested_quality)
     {
         return "worst";
     }
-
     return requested_quality;
 }
 
@@ -461,20 +459,14 @@ static pid_t launch_streamlink_and_ffmpeg(recorder_context *context, const char 
 
         char escaped_url[512];
         char escaped_log[512];
-        char escaped_work_dir[512];
-        char escaped_platform[64];
-        char escaped_streamer[128];
 
         escape_shell_argument(stream_url, escaped_url, sizeof(escaped_url));
         escape_shell_argument(context->log_file_path, escaped_log, sizeof(escaped_log));
-        escape_shell_argument(context->work_directory, escaped_work_dir, sizeof(escaped_work_dir));
-        escape_shell_argument(context->platform_name, escaped_platform, sizeof(escaped_platform));
-        escape_shell_argument(context->streamer_name, escaped_streamer, sizeof(escaped_streamer));
 
         char command[4096];
         int written = snprintf(command, sizeof(command),
                  "streamlink --stdout --ipv4 --stream-timeout %d --retry-streams %d --retry-open %d %s %s 2>>%s | "
-                 "ffmpeg -hide_banner -loglevel warning -fflags +genpts -flags +low_delay "
+                 "ffmpeg -nostats -hide_banner -loglevel warning -fflags +genpts -flags +low_delay "
                  "-probesize 4M -analyzeduration 4M -i - -map 0:v -map 0:a -c copy "
                  "-f segment -segment_format mpegts -segment_time %d -segment_time_delta 0.1 "
                  "-reset_timestamps 0 -strftime 1 -avoid_negative_ts make_zero "
@@ -486,9 +478,9 @@ static pid_t launch_streamlink_and_ffmpeg(recorder_context *context, const char 
                  quality_chain,
                  escaped_log,
                  context->segment_duration_seconds,
-                 escaped_work_dir,
-                 escaped_platform,
-                 escaped_streamer,
+                 context->work_directory,
+                 context->platform_name,
+                 context->streamer_name,
                  escaped_log);
 
         if (written < 0 || (size_t)written >= sizeof(command))

@@ -54,6 +54,8 @@ int config_parser_load(const char *path, configuration *target_configuration)
     target_configuration->concat_force_on_low_disk = 1;
     target_configuration->max_mp4_files_to_keep = 50;
     target_configuration->twitch_streamers[0] = '\0';
+    strncpy(target_configuration->stream_quality, "720p", sizeof(target_configuration->stream_quality) - 1);
+    target_configuration->stream_quality[sizeof(target_configuration->stream_quality) - 1] = '\0';
 
     parse_string(root, "base_directory", target_configuration->base_directory,
                  sizeof(target_configuration->base_directory), target_configuration->base_directory);
@@ -101,6 +103,8 @@ int config_parser_load(const char *path, configuration *target_configuration)
                   target_configuration->max_mp4_files_to_keep);
     parse_string(root, "twitch_streamers", target_configuration->twitch_streamers,
                  sizeof(target_configuration->twitch_streamers), "");
+    parse_string(root, "stream_quality", target_configuration->stream_quality,
+                 sizeof(target_configuration->stream_quality), "720p");
 
     strncpy(target_configuration->configuration_path, path,
             sizeof(target_configuration->configuration_path) - 1);

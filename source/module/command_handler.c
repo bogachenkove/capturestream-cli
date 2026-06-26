@@ -20,17 +20,19 @@ int command_handler_process(control_server *server, const char *command_text,
     char sanitized_command[COMMAND_BUFFER_SIZE];
     strncpy(sanitized_command, command_text, sizeof(sanitized_command) - 1);
     sanitized_command[sizeof(sanitized_command) - 1] = '\0';
-
     size_t text_length = strlen(sanitized_command);
     if (text_length > 0 && sanitized_command[text_length - 1] == '\n')
     {
         sanitized_command[text_length - 1] = '\0';
     }
+    char token_buffer[COMMAND_BUFFER_SIZE];
+    strncpy(token_buffer, sanitized_command, sizeof(token_buffer) - 1);
+    token_buffer[sizeof(token_buffer) - 1] = '\0';
 
     log_write(LOG_DEBUG, "commandHandler: received command: %s", sanitized_command);
 
     char *tokenizer_state;
-    char *command_token = strtok_r(sanitized_command, " ", &tokenizer_state);
+    char *command_token = strtok_r(token_buffer, " ", &tokenizer_state);
 
     if (command_token == NULL)
     {
@@ -77,7 +79,18 @@ int command_handler_process(control_server *server, const char *command_text,
     {
         snprintf(response_text, response_size, "Stopping all recorders...\n");
         streamer_manager *streamer_manager_handle = (streamer_manager*)server->manager_handle;
-        configuration empty_configuration = *(const configuration*)server->config_manager_handle;
+        configuration_manager *configuration_manager_handle = (configuration_manager*)server->config_manager_handle;
+
+        const configuration *current_config = configuration_acquire(configuration_manager_handle);
+        if (current_config == NULL)
+        {
+            snprintf(response_text, response_size, "ERROR: cannot acquire configuration\n");
+            return -1;
+        }
+
+        configuration empty_configuration = *current_config;
+        configuration_release(configuration_manager_handle);
+
         empty_configuration.twitch_streamers[0] = '\0';
         streamer_manager_reload_configuration(streamer_manager_handle, &empty_configuration);
         return 0;
@@ -155,7 +168,7 @@ int command_handler_process(control_server *server, const char *command_text,
     else if (strcmp(command_token, "set") == 0)
     {
         char parameter_key[64], parameter_value[64];
-        if (command_handler_parse_set(command_text, parameter_key, parameter_value) != 0)
+        if (command_handler_parse_set(sanitized_command, parameter_key, parameter_value) != 0)
         {
             snprintf(response_text, response_size, "ERROR: invalid set format. Use: set key=value\n");
             return -1;
