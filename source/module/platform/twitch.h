@@ -3,7 +3,7 @@
 
 #include <stddef.h>
 
-int twitch_is_stream_live(const char *streamer);
-void twitch_build_stream_url(const char *streamer, char *buffer, size_t buffer_size);
+int twitch_is_stream_live (const char *streamer);
+void twitch_build_stream_url (const char *streamer, char *buffer, size_t buffer_size);
 
 #endif

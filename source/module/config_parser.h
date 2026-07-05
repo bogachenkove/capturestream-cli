@@ -3,6 +3,6 @@
 
 #include "config.h"
 
-int config_parser_load(const char *path, configuration *target_configuration);
+int config_parser_load (const char *path, configuration *target_configuration);
 
 #endif
